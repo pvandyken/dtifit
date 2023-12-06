@@ -1,0 +1,140 @@
+from snakebids import bids, generate_inputs, get_wildcard_constraints
+from pathlib import Path
+
+configfile: 'config/snakebids.yml'
+
+# Get input wildcards
+inputs = generate_inputs(
+    bids_dir=config["bids_dir"],
+    pybids_inputs=config["pybids_inputs"],
+    pybidsdb_dir=config.get("pybidsdb_dir"),
+    pybidsdb_reset=config.get("pybidsdb_reset"),
+    derivatives=config.get("derivatives", None),
+    participant_label=config.get("participant_label", None),
+    exclude_participant_label=config.get("exclude_participant_label", None),
+    validate=not config.get("plugins.validator.skip", False)
+)
+
+def strip_suffixes(path):
+    if not isinstance(path, Path):
+        return strip_suffixes(Path(path))
+    if path.stem == path.name:
+        return path
+    return strip_suffixes(path.with_suffix(""))
+
+rule run_dtifit:
+    input:
+        dwi=inputs["dwi"].path,
+        bvals=strip_suffixes(inputs["dwi"].path).with_suffix(".bval"),
+        bvecs=strip_suffixes(inputs["dwi"].path).with_suffix(".bvec"),
+        brainmask=inputs["mask"].path,
+    output:
+        fa=bids(
+            model="tensor",
+            desc="FA",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        md=bids(
+            model="tensor",
+            desc="MD",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        rd=bids(
+            model="tensor",
+            desc="RD",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        tr=bids(
+            model="tensor",
+            desc="Tr",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        mo=bids(
+            model="tensor",
+            desc="MO",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        l1=bids(
+            model="tensor",
+            desc="L1",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        l2=bids(
+            model="tensor",
+            desc="L2",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        l3=bids(
+            model="tensor",
+            desc="L3",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        v1=bids(
+            model="tensor",
+            desc="V1",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        v2=bids(
+            model="tensor",
+            desc="V2",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        v3=bids(
+            model="tensor",
+            desc="V3",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+        s0=bids(
+            model="tensor",
+            desc="S0",
+            suffix="mdp.nii.gz",
+            datatype="dwi",
+            **inputs["dwi"].wildcards,
+        ),
+
+    container: config["containers"]["fsl"]
+    resources:
+        runtime=10,
+    shadow: 'minimal'
+    shell: """
+        dtifit --data={input.dwi} --bvecs={input.bvecs} --bvals={input.bvals} \\
+            --mask={input.brainmask} --out=dtifit
+        mv dtifit_V1.nii.gz {output.v1}
+        mv dtifit_V2.nii.gz {output.v2}
+        mv dtifit_V3.nii.gz {output.v3}
+        mv dtifit_L1.nii.gz {output.l1}
+        mv dtifit_L2.nii.gz {output.l2}
+        mv dtifit_L3.nii.gz {output.l3}
+        mv dtifit_FA.nii.gz {output.fa}
+        mv dtifit_MD.nii.gz {output.md}
+        mv dtifit_MO.nii.gz {output.mo}
+        mv dtifit_S0.nii.gz {output.s0}
+        fslmaths {output.l1} -add {output.l2} -add {output.l3} {output.tr}
+        fslmaths {output.l2} -add {output.l3} -div 2 {output.rd}
+        """
+
+rule all:
+    input:
+        inputs["dwi"].expand(rules.run_dtifit.output)

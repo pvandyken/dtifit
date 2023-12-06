@@ -1,0 +1,5 @@
+include dtifit/**/*.yaml
+include dtifit/**/*.yml
+include dtifit/**/*.json
+include dtifit/**/Snakefile
+include dtifit/**/*.smk
