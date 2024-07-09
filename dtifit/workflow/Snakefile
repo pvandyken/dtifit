@@ -1,6 +1,7 @@
-from snakebids import bids, generate_inputs, get_wildcard_constraints
+from snakebids import bids, generate_inputs, get_wildcard_constraints, set_bids_spec
 from pathlib import Path
 
+set_bids_spec("v0_0_0")
 configfile: 'config/snakebids.yml'
 
 # Get input wildcards
